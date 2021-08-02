@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>Epitope Predict</h2>
+
+<form action="/process" method="post">
+  <label for="fname">Input Sequence</label><br>
+  <input type="text" id="seq" name="seq" ><br>
+  <br>
+  <p>Select Allele</p>
+  <select name="allele" id="allele" multiple>
+    {% for i in headings%}
+        <th scope="col">{{i}} </th>
+        <option value={{i}}>{{i}}</option>
+      {% endfor %} 
+  </select>
+  <br>
+  <p>Select Length</p>
+  <select name="length" id="length" multiple>
+    <option value="9">9</option>
+    <option value="10">10</option>
+    <option value="11">11</option>
+  </select>
+  <br>
+  <input type="submit" value="Submit">
+</form> 
+</body>
+</html>
