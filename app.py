@@ -165,13 +165,72 @@ def clean_sequence(seq):
     import re
     new = re.sub('[-*_#X]', '', seq)
     return new
+
+
+def getIndexes(dfObj, value):
+    ''' Get index positions of value in dataframe i.e. dfObj.'''
+    listOfPos = list()
+    # Get bool dataframe with True at positions where the given value exists
+    result = dfObj.isin([value])
+    # Get list of columns that contains the value
+    seriesObj = result.any()
+    columnNames = list(seriesObj[seriesObj == True].index)
+    # Iterate over list of columns and fetch the rows indexes where value exists
+    for col in columnNames:
+        rows = list(result[col][result[col] == True].index)
+        for row in rows:
+            listOfPos.append((row, col))
+    # Return a list of tuples indicating the positions of value in the dataframe
+    return listOfPos
+dfMain=pd.read_csv("data/curated_training_data.no_mass_spec.csv")
+
+def Diff(li1, li2):
+    return list(set(li1) - set(li2)) + list(set(li2) - set(li1)) 
 def main(alleleList,length,seq):
     result=[]
+    pepDone=[]
     for allele in alleleList:
         for l in length:
+            flag=0
+            try:
+                
+                peptides,k=peptutils.create_fragments(seq=seq, length=l, overlap=1)     
+                print(peptides)
+                for pep in peptides:
+                    res=getIndexes(dfMain, pep)
+                    for i in res:
+                        if dfMain["allele"][i[0]]==allele:
+                            res = pd.DataFrame(columns=['peptide','log50k'])
+                            res["peptide"]=[pep]
+                            res['log50k'] =[dfMain["ic50"][i[0]]]
+                            x=res['log50k']
+                            res['score'] = res.log50k.apply(lambda x: log50k2aff(x))
+                            allele=allele
+                            df = prepare_data(res,"temp",allele)
+                            result.append(df)
+                            pepDone.append(pep)   
+                            print("FOUND")
+                            #print(df)
+                            break
+                        
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+                print(e)
+                f=pd.DataFrame()
+                result.append(f)
+                
+                
+    for allele in alleleList:
+        
+        for l in length:
+            flag=0
             try:
                 reg=get_model(allele, l)
                 peptides,k=peptutils.create_fragments(seq=seq, length=l, overlap=1)
+                peptides=Diff(peptides,pepDone)
+                print(peptides)
                 s=pd.Series(peptides)
                 X = s.apply(lambda x: pd.Series(blosum_encode(x)),1)
                 l=reg.predict(X)
@@ -187,8 +246,12 @@ def main(alleleList,length,seq):
                 result.append(df)
             except Exception as e:
                 print(e)
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
                 f=pd.DataFrame()
                 result.append(f)
+                
     finalresult = pd.concat(result)
     return finalresult       
 
